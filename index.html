@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Ecobici Stats</title>
+	<meta charset="UTF-8">
+	<meta name="description" content="Información del servicio del gobierno de la ciudad representada en gráficos y actualizada en tiempo real">
+	<meta name="keywords" content="d3.js, d3, js, JavaScript">
+	<meta name="author" content="Esteban Jelicich">
+	<meta http-equiv="refresh" content="30">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+	<script src="http://d3js.org/d3.v3.js"></script>
+	<script src="js/xml2json.min.js"></script>
+	<script src="js/ecobici.js"></script>
+	<style type="text/css">
+	
+	body,
+	html,
+	#wrapper{
+		height: 100%;
+		width: 100%;
+		min-height: 100%;
+		min-width: 100%;
+		overflow: hidden;
+	}
+	body{
+		background: url('img/bg.png');
+	}
+	</style>
+
+</head>
+<body>
+<div id="wrapper">
+	<div id="title">
+		<h1>Ecobici en gráficos</h1>
+		<p>Información del servicio del gobierno de la ciudad representada en gráficos y actualizada en tiempo real</p>
+	</div>
+	<div id="top">
+		<h2>Bicicletas totales vs disponibles por estación</h2>
+		<div id="grafico-top"></div>
+	</div>
+	<div id="bottom" class="clearfix">
+		<div id="bottom-left">	
+			<h2>Graficos+</h2>
+		</div>
+		<div id="bottom-right">
+			<h2>Mapa de la ciudad</h2>
+		</div>
+	</div>
+</div>
+</body>
+</html>
