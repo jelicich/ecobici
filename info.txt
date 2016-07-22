@@ -1,0 +1,5 @@
+Geo JSON mapas
+https://github.com/jazzido/Polymaps-Argentina/tree/master/provincias
+
+How to center map
+http://stackoverflow.com/questions/14492284/center-a-map-in-d3-given-a-geojson-object

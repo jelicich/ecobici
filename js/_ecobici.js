@@ -1,43 +1,32 @@
-var ecobici = {};
 
-ecobici.Panel = {
-	data : null,
+var Ecobici = {
 	
-	init: function(){},
-
-	loadData: function(status, callback){},
-
-	showNotifications: function(data){},
-
-	runInterval: function(){},
-
-	getData: function(){}
-};
-
-ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
-
 	//URL_STATION: http://epok.buenosaires.gob.ar/getObjectContent/?id=estaciones_de_bicicletas%7C6,
 	//URL_ECOBICI: 'http://epok.buenosaires.gob.ar/getGeoLayer/?categoria=estaciones_de_bicicletas&estado=*&formato=geojson',
 	URL_SERVICE: '/service/ecobiciService.php',
 	UPDATE_TIME: 5000, //ms
 	data: null,
 	isWaiting: false,
-	interval: null,
-	
+
 	init: function(){
-		console.log('TopPanel init');
+		console.log('Ecobici init');
 		var t = this;
 		
-		this.loadData('*', [this.setUpTopChart]);
+		this.getStationsByStatus('*', [this.setUpTopChart]);
 
-		this.runInterval();
+		var updateInterval = setInterval(function(){
+			if(!t.isWaiting) {
+				t.getStationsByStatus('*', [t.updateBikesAvailable, t.showNotifications]);
+			}
+		},t.UPDATE_TIME);
 
 		//events
 		$(window).on('resize', function(){
-			t.updateBikesAvailable(ecobici.TopPanel.getData())
+			t.updateBikesAvailable(Ecobici.getData())
 		})
+		
 	},
-	loadData: function(status, callback){
+	getStationsByStatus: function(status, callback){
 		var t = this;
 		t.isWaiting = true;
 		$.ajax({
@@ -46,13 +35,12 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 			data: { method: "getStationsByStatus", data: status },
 			success: function(r){
 				t.data = JSON.parse(r);
-				//console.log(t.data)
+				console.log(t.data)
 				if(typeof callback != 'undefined'){
 					for(var i = 0; i < callback.length; i++){
 						callback[i](t.data);
 					}
 				};
-				$(t).trigger('dataLoaded');
 				t.isWaiting = false;
 			},
 			error: function(r){
@@ -106,7 +94,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 			.attr('class','y-axis')
 			.attr('transform', 'translate(' + padding +',0)'); //g is a group like a div to put elements in
 
-		ecobici.TopPanel.updateBikesAvailable(d);
+		Ecobici.updateBikesAvailable(d);
 	},
 	updateBikesAvailable: function(data){
 		var data = data.features;
@@ -213,167 +201,15 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 			}
 		}
 	},
-	runInterval: function(){
-		var t = this;
-		t.interval = setInterval(function(){
-			if(!t.isWaiting) {
-				t.loadData('*', [t.updateBikesAvailable, t.showNotifications]);
-				console.log('Update request')
-			}
-		},t.UPDATE_TIME);
-	},
 	showNotifications: function(data){
 		//TODO
 	},
 	getData: function(){
 		return this.data;
 	}
-
-});
-
-ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
-	data : null,
-	isRendered: false,
-	
-	init: function(){
-		console.log('RightPanel init');
-		var t = this;
-		
-		$(ecobici.TopPanel).on('dataLoaded', function(event, ui) {
-			if(!t.isRendered){
-				t.loadData([t.renderMap]);
-			}
-		});
-		
-		//this.runInterval();
-	},
-	loadData: function(callback){
-		//uses the same that as TopPanel
-		this.data = ecobici.TopPanel.getData();
-		if(typeof callback != 'undefined'){
-			for(var i = 0; i < callback.length; i++){
-				callback[i](this.data);
-			}
-		};
-	},
-	renderMap: function(data){
-		var data = data.features;
-		var $container = $('#graph-bottom-right');
-		var container = '#graph-bottom-right';
-		var margin = {top: 10, right: 10, bottom: 10, left: 10};
-		var width = $container.width();
-		var height = $container.height();
-		var spacing = (0.3 / 100) * width; //0.2%
-		var padding = 25;
-		var tooltip = d3.select('#graph-top-tooltip');
-		var t = this;
-
-		// var projection = d3.geo.mercator() //.equirectangular() //.mercator()
-		// 	.translate([width/2, height/2])
-		// 	.scale([width]);
-
-		// var path = d3.geo.path().projection(projection); // function
-
-		var svg = d3.select(container)
-			.append('svg')
-			.attr({
-				width : width,
-				height : height
-			});
-
-		d3.json('/assets/json/caba.json', function(json){
-			var center = d3.geo.centroid(json)
-			var scale = 150;
-			var offset = [width/2, height/2];
-			var projection = d3.geo.mercator().scale(scale).center(center)
-			    .translate(offset);
-
-			// create the path
-			var path = d3.geo.path().projection(projection);
-
-			// using the path determine the bounds of the current map and use 
-			// these to determine better values for the scale and translation
-			var bounds = path.bounds(json);
-			var hscale = scale*width  / (bounds[1][0] - bounds[0][0]);
-			var vscale = scale*height / (bounds[1][1] - bounds[0][1]);
-			var scale = (hscale < vscale) ? hscale : vscale;
-			var offset = [
-				width - (bounds[0][0] + bounds[1][0])/2, 
-				height - (bounds[0][1] + bounds[1][1])/2
-				];
-
-			// new projection
-			projection = d3.geo.mercator().center(center)
-				.scale(scale).translate(offset);
-			path = path.projection(projection);
-
-			svg.selectAll("path").data(json.features).enter().append("path")
-				.attr("d", path)
-			    .style("fill", "#bdbdbd")
-			    .style("stroke-width", "1")
-			    .style("stroke", "rgba(0,0,0,0.5)");
-
-			//debugger;
-			//append circles
-			// svg.selectAll('circle')
-			// 	.data(data)
-			// 	.enter()
-			// 	.append('circle')
-			// 	.attr({
-			// 		cx : function(d){ 
-			// 			var lon = d.geometry.coordinates[0];
-			// 			var lat = d.geometry.coordinates[1];
-			// 			var r = projection([lon, lat]);
-			// 			if(r){
-			// 				return r[0] //lon; 
-			// 			} 
-			// 		},
-			// 		cy : function(d){ 
-			// 			var lon = d.geometry.coordinates[0];
-			// 			var lat = d.geometry.coordinates[1];
-			// 			var r = projection([lon, lat]);
-			// 			//debugger;
-			// 			if(r){
-			// 				return r[1] //lat; 	
-			// 			} 
-			// 		},
-			// 		r: function(d){ return Math.sqrt(parseInt(d.properties.CantidadBicicletas)*0.0009); }, // not dynamic, resizes the dot based on 0.000X
-			// 		fill: function(d){ return colorPicker(d.properties.CantidadBicicletas)},
-			// 		'class':'circle-station',
-			// 	})
-			// 	.on('mouseover',function(d){
-			// 		d3.select(this).attr('class','hover');
-			// 	})
-			// 	.on('mouseout', function(d){
-			// 		d3.select(this).classed("hover", false); //removeClass
-			// 	});
-				// .append('title')
-				// .text(function(d){return d.city});
-
-			ecobici.RightPanel.isRendered = true;
-		});
-
-		function colorPicker(v) {
-			if(v==0){
-				return '#de2d26';
-			} else if(v<3) {
-				return '#fe9929';
-			} else if(v>=3 && v<=15) {
-				return '#bdbdbd';
-			} else if(v>15) {
-				return '#31a354';
-			}
-		}
-		
-	},
-	showNotifications: function(data){},
-
-	getData: function(){}
-});
-
+};
 {
 	$(document).ready(function(){
-		ecobici.TopPanel.init();
-		ecobici.RightPanel.init();
+		Ecobici.init();
 	})
-};
+}
