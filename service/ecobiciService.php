@@ -64,5 +64,6 @@ $s = new Ecobici_Service();
 $data = $s->evalMethod();
 echo $data;
 //var_dump($_POST);
+//echo '{"type": "FeatureCollection", "features":[{"geometry":{"type": "Point", "coordinates": [106500.16143199999, 105115.884231]}, "type": "Feature", "id": "estaciones_de_bicicletas|1", "properties": {"Nombre": "1 - Facultad de Derecho", "Estado": "disponible", "Id": "estaciones_de_bicicletas|1", "Tipo": "automatica", "CantidadBicicletas": 54}},{"geometry": {"type": "Point", "coordinates": [106500.16143199999, 105115.884231]}, "type": "Feature","id": "estaciones_de_bicicletas|2","properties": {"Nombre": "2 - Retiro", "Estado": "disponible", "Id": "estaciones_de_bicicletas|2", "Tipo": "automatica", "CantidadBicicletas": 16}}]}';
 
 ?>
