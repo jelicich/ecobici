@@ -1,11 +1,15 @@
+/*---------*/
+/*NAMESPACE*/
+/*---------*/
 var ecobici = {};
 
+/*--------------*/
+/*ABSTRACT CLASS*/
+/*--------------*/
 ecobici.Panel = {
 	data : null,
 	
 	init: function(){},
-
-	loadData: function(status, callback){},
 
 	showNotifications: function(data){},
 
@@ -14,21 +18,68 @@ ecobici.Panel = {
 	getData: function(){}
 };
 
+/*------*/
+/*EVENTS*/
+/*------*/
+ecobici.Events = {
+	STATIONS_BY_STATUS_LOADED: 'stationsByStatusLoaded',
+};
+
+/*------------*/
+/*DATA MANAGER*/
+/*------------*/
+ecobici.DataManager = {
+	URL_SERVICE: '/service/ecobiciService.php',
+	isWaiting:{
+		stationsByStatus: false
+	},
+
+	init: function(){
+		var t = this;
+		t.getStationsByStatus('*');
+	},
+	getStationsByStatus: function(status){
+		var t = this;
+		if(!t.isWaiting.stationsByStatus){
+			t.isWaiting.stationsByStatus = true;
+			$.ajax({
+				method: "POST",
+				url: t.URL_SERVICE,
+				data: { method: "getStationsByStatus", data: status },
+				success: function(r){
+					t.data = JSON.parse(r);
+					//console.log(t.data);
+					$(ecobici.DataManager).trigger(ecobici.Events.STATIONS_BY_STATUS_LOADED, [t.data]);
+					t.isWaiting.stationsByStatus = false;
+				},
+				error: function(r){
+					$('body').append('<p class="error">Error al cargar la informacion</p>')
+					t.isWaiting.stationsByStatus = false;
+				}
+			})
+		}
+	}
+};
+
+/*---------*/
+/*TOP PANEL*/
+/*---------*/
 ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 
-	//URL_STATION: http://epok.buenosaires.gob.ar/getObjectContent/?id=estaciones_de_bicicletas%7C6,
-	//URL_ECOBICI: 'http://epok.buenosaires.gob.ar/getGeoLayer/?categoria=estaciones_de_bicicletas&estado=*&formato=geojson',
-	URL_SERVICE: '/service/ecobiciService.php',
 	UPDATE_TIME: 5000, //ms
 	data: null,
 	isWaiting: false,
 	interval: null,
+	isRendered: false,
+	status: '*',
 	
 	init: function(){
 		console.log('TopPanel init');
 		var t = this;
 		
-		this.loadData('*', [this.setUpTopChart]);
+		$(ecobici.DataManager).on(ecobici.Events.STATIONS_BY_STATUS_LOADED, function(event, data) {
+			t.updateBikesAvailable(data);
+		});
 
 		this.runInterval();
 
@@ -37,31 +88,8 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 			t.updateBikesAvailable(ecobici.TopPanel.getData())
 		})
 	},
-	loadData: function(status, callback){
-		var t = this;
-		t.isWaiting = true;
-		$.ajax({
-			method: "POST",
-			url: this.URL_SERVICE,
-			data: { method: "getStationsByStatus", data: status },
-			success: function(r){
-				t.data = JSON.parse(r);
-				//console.log(t.data)
-				if(typeof callback != 'undefined'){
-					for(var i = 0; i < callback.length; i++){
-						callback[i](t.data);
-					}
-				};
-				$(t).trigger('dataLoaded');
-				t.isWaiting = false;
-			},
-			error: function(r){
-				$('body').append('<p class="error">Error al cargar la informacion</p>')
-				t.isWaiting = false;
-			}
-		})
-	},
 	setUpTopChart: function(d){
+		var t = this;
 		var data = d.features;
 		var $container = $('#graph-top');
 		var container = '#graph-top';
@@ -106,9 +134,12 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 			.attr('class','y-axis')
 			.attr('transform', 'translate(' + padding +',0)'); //g is a group like a div to put elements in
 
-		ecobici.TopPanel.updateBikesAvailable(d);
+		this.isRendered = true;
 	},
 	updateBikesAvailable: function(data){
+		if(!ecobici.TopPanel.isRendered){
+			ecobici.TopPanel.setUpTopChart(data);
+		}
 		var data = data.features;
 		var $container = $('#graph-top');
 		var container = '#graph-top';
@@ -215,11 +246,9 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 	},
 	runInterval: function(){
 		var t = this;
-		t.interval = setInterval(function(){
-			if(!t.isWaiting) {
-				t.loadData('*', [t.updateBikesAvailable, t.showNotifications]);
-				console.log('Update request')
-			}
+		t.interval = setInterval(function(){	
+			ecobici.DataManager.getStationsByStatus(t.status);
+			//console.log('Update request')
 		},t.UPDATE_TIME);
 	},
 	showNotifications: function(data){
@@ -228,9 +257,11 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 	getData: function(){
 		return this.data;
 	}
-
 });
 
+/*-----------*/
+/*RIGHT PANEL*/
+/*-----------*/
 ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 	data : null,
 	isRendered: false,
@@ -238,17 +269,15 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 	init: function(){
 		console.log('RightPanel init');
 		var t = this;
-		
-		$(ecobici.TopPanel).on('dataLoaded', function(event, ui) {
-			if(!t.isRendered){
-				t.loadData([t.renderMap]);
-			}
+
+		$(ecobici.DataManager).on(ecobici.Events.STATIONS_BY_STATUS_LOADED, function(event, data) {
+			t.updateMap(data);
 		});
 		
 		//this.runInterval();
 	},
 	loadData: function(callback){
-		//uses the same that as TopPanel
+		//uses the same data as TopPanel
 		this.data = ecobici.TopPanel.getData();
 		if(typeof callback != 'undefined'){
 			for(var i = 0; i < callback.length; i++){
@@ -348,9 +377,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 			// 		d3.select(this).classed("hover", false); //removeClass
 			// 	});
 				// .append('title')
-				// .text(function(d){return d.city});
-
-			ecobici.RightPanel.isRendered = true;
+				// .text(function(d){return d.city});	
 		});
 
 		function colorPicker(v) {
@@ -366,6 +393,15 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		}
 		
 	},
+	updateMap: function(data){
+		if(!ecobici.RightPanel.isRendered){
+			ecobici.RightPanel.renderMap(data);
+		}
+
+		//TODO
+
+		ecobici.RightPanel.isRendered = true;
+	},
 	showNotifications: function(data){},
 
 	getData: function(){}
@@ -373,6 +409,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 
 {
 	$(document).ready(function(){
+		ecobici.DataManager.init();
 		ecobici.TopPanel.init();
 		ecobici.RightPanel.init();
 	})
