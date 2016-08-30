@@ -183,7 +183,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 		var yAxis = svg.selectAll('g.y-axis').call(yAxisGen);
 		//debugger;
 		
-		 var bar = svg.selectAll('.bar')
+		var bar = svg.selectAll('.bar')
             .data(data);
 
 	    // new data:
@@ -273,6 +273,8 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		$(ecobici.DataManager).on(ecobici.Events.STATIONS_BY_STATUS_LOADED, function(event, data) {
 			t.updateMap(data);
 		});
+
+		
 		
 		//this.runInterval();
 	},
@@ -284,6 +286,43 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 				callback[i](this.data);
 			}
 		};
+	},
+	printMap: function(data){
+		var t = this;
+		var data = data.features;
+		t.map = new L.Map("graph-bottom-right", {center: [-34.6, -58.4], zoom: 11}).addLayer(new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"));
+		
+		//init svg layer from map
+		t.map._initPathRoot()
+
+		//select svg layer from map and append group
+		var svg = d3.select("#graph-bottom-right").select("svg");
+		var g = svg.append("g");
+		debugger;
+
+		for(var i = 0; i < data.length; i++){
+			var lat = data[i].geometry.coordinates[0];
+			var lng = data[i].geometry.coordinates[1];
+			data[i].LatLng = new L.LatLng(lat, lng);
+
+		}
+
+		var circles = g.selectAll("circle")
+			.data(data)
+			.enter()
+			.append("circle")
+			.style("stroke", "black")  
+			.style("opacity", .6) 
+			.style("fill", "red")
+			.attr({
+				r: 20,//function(d){ return Math.sqrt(parseInt(d.properties.CantidadBicicletas)*0.0009); }, // not dynamic, resizes the dot based on 0.000X
+				//fill: function(d){ return colorPicker(d.properties.CantidadBicicletas)},
+				'class':'circle-station',
+			});
+		
+		t.map.on("viewreset", ecobici.RightPanel.updateMap);
+	
+		ecobici.RightPanel.isRendered = true;
 	},
 	renderMap: function(data){
 		var data = data.features;
@@ -394,14 +433,33 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		
 	},
 	updateMap: function(data){
+		// if(!ecobici.RightPanel.isRendered){
+		// 	ecobici.RightPanel.renderMap(data);
+		// }
+		var t = this;
 		if(!ecobici.RightPanel.isRendered){
-			ecobici.RightPanel.renderMap(data);
+			ecobici.RightPanel.printMap(data);
 		}
+		var svg = d3.select("#graph-bottom-right").select("svg");
 
-		//TODO
+		// var circles = svg.selectAll('circle.circle-station');
+		// circles.data(data)
+		// 	.enter()
+		// 	.attr("transform", function(d) { 
+		// 		return "translate(" + t.map.latLngToLayerPoint(d.LatLng).x + "," + map.latLngToLayerPoint(d.LatLng).y +")";
+		// 	});
 
-		ecobici.RightPanel.isRendered = true;
+		var circles = svg.select('g').selectAll('circle')
+            .data(data);
+
+	    // new data:
+	    circles.enter()
+	    	.append('circle')
+	    	.attr("transform", function(d) { 
+				return "translate(" + t.map.latLngToLayerPoint(d.LatLng).x + "," + map.latLngToLayerPoint(d.LatLng).y +")";
+			});
 	},
+
 	showNotifications: function(data){},
 
 	getData: function(){}
