@@ -29,7 +29,7 @@ ecobici.Events = {
 /*DATA MANAGER*/
 /*------------*/
 ecobici.DataManager = {
-	URL_SERVICE: '/service/ecobiciService.php',
+	URL_SERVICE: './service/ecobiciService.php',
 	isWaiting:{
 		stationsByStatus: false
 	},
@@ -298,7 +298,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		//select svg layer from map and append group
 		var svg = d3.select("#graph-bottom-right").select("svg");
 		var g = svg.append("g");
-		debugger;
+		//debugger;
 
 		for(var i = 0; i < data.length; i++){
 			var lat = data[i].geometry.coordinates[0];
