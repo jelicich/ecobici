@@ -8,7 +8,7 @@ var ecobici = {};
 /*--------------*/
 ecobici.Panel = {
 	data : null,
-	
+
 	init: function(){},
 
 	showNotifications: function(data){},
@@ -72,11 +72,11 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 	interval: null,
 	isRendered: false,
 	status: '*',
-	
+
 	init: function(){
 		console.log('TopPanel init');
 		var t = this;
-		
+
 		$(ecobici.DataManager).on(ecobici.Events.STATIONS_BY_STATUS_LOADED, function(event, data) {
 			t.updateBikesAvailable(data);
 		});
@@ -112,7 +112,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 
 		var yScale = d3.scale.linear()
 			.domain([
-					0, 
+					0,
 					d3.max(data, function(d){ return d.properties.CantidadBicicletas; })
 				])
 			.range([height-padding,0]);
@@ -149,7 +149,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 		var spacing = (0.3 / 100) * width; //0.2%
 		var padding = 25;
 		var tooltip = d3.select('#graph-top-tooltip');
-		
+
 		//scales
 		var xScale = d3.scale.ordinal()
 			.domain(['Estaciones'])
@@ -163,7 +163,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 
 		var yScale = d3.scale.linear()
 			.domain([
-					0, 
+					0,
 					d3.max(data, function(d){ return d.properties.CantidadBicicletas; })
 				])
 			.range([height-padding,0]);
@@ -182,7 +182,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 		var xAxis = svg.selectAll('g.x-axis').call(xAxisGen).attr('transform', 'translate(' + padding + ',' + (height-padding) +')');;
 		var yAxis = svg.selectAll('g.y-axis').call(yAxisGen);
 		//debugger;
-		
+
 		var bar = svg.selectAll('.bar')
             .data(data);
 
@@ -196,12 +196,12 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 	    		width: (width / data.length) - spacing,
 	    		fill: function(d){ return colorPicker(d.properties.CantidadBicicletas)}
 	    	})
-			.on('mouseover',function(d){	
+			.on('mouseover',function(d){
 				tooltip.select('.title').html(d.properties.Nombre);
 
 				var color = colorPicker(d.properties.CantidadBicicletas);
 				tooltip.select('.content').html('<ul><li><strong style="color:'+color+'">Cantidad: ' + d.properties.CantidadBicicletas + '</strong></li><li>Estado: ' + d.properties.Estado + '</li><li>Tipo de estación: ' + d.properties.Tipo + '</li></ul>');
-				
+
 				// tooltip.style('left', (d3.event.pageX)+'px')
 				// 	.style('top', (d3.event.pageY - 68)+'px');
 
@@ -232,7 +232,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 		//move the axis
 		$('g.x-axis',$container).appendTo($container.find('svg'));
 		$('g.y-axis',$container).appendTo($container.find('svg'));
-		
+
 
 		function colorPicker(v) {
 			if(v<3) {
@@ -246,7 +246,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 	},
 	runInterval: function(){
 		var t = this;
-		t.interval = setInterval(function(){	
+		t.interval = setInterval(function(){
 			ecobici.DataManager.getStationsByStatus(t.status);
 			//console.log('Update request')
 		},t.UPDATE_TIME);
@@ -265,7 +265,7 @@ ecobici.TopPanel = $.extend(true, {}, ecobici.Panel, {
 ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 	data : null,
 	isRendered: false,
-	
+
 	init: function(){
 		console.log('RightPanel init');
 		var t = this;
@@ -274,8 +274,8 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 			t.updateMap(data);
 		});
 
-		
-		
+
+
 		//this.runInterval();
 	},
 	loadData: function(callback){
@@ -288,12 +288,17 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		};
 	},
 	printMap: function(data){
+
 		var t = this;
 		var data = data.features;
 		t.map = new L.Map("graph-bottom-right", {center: [-34.6, -58.4], zoom: 11}).addLayer(new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"));
-		
+
 		//init svg layer from map
-		t.map._initPathRoot()
+		t.map._initPathRoot();
+
+		var geoSearchController = new L.Control.GeoSearch({
+		    provider: new L.GeoSearch.Provider.OpenStreetMap()
+		}).addTo(t.map);
 
 		//select svg layer from map and append group
 		var svg = d3.select("#graph-bottom-right").select("svg");
@@ -301,27 +306,33 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		//debugger;
 
 		for(var i = 0; i < data.length; i++){
-			var lat = data[i].geometry.coordinates[0];
-			var lng = data[i].geometry.coordinates[1];
-			data[i].LatLng = new L.LatLng(lat, lng);
-
+			(function(i){
+				debugger;
+				geoSearchController.geosearch('New York', function(results){
+					console.log(results)
+					var lat = results.Y;
+					var lng = results.X;
+					data[i].LatLng = new L.LatLng(lat, lng);
+					console.log('se agrego la ');
+				});
+			})(i);
 		}
 
 		var circles = g.selectAll("circle")
 			.data(data)
 			.enter()
 			.append("circle")
-			.style("stroke", "black")  
-			.style("opacity", .6) 
+			.style("stroke", "black")
+			.style("opacity", .6)
 			.style("fill", "red")
 			.attr({
 				r: 20,//function(d){ return Math.sqrt(parseInt(d.properties.CantidadBicicletas)*0.0009); }, // not dynamic, resizes the dot based on 0.000X
 				//fill: function(d){ return colorPicker(d.properties.CantidadBicicletas)},
 				'class':'circle-station',
 			});
-		
+
 		t.map.on("viewreset", ecobici.RightPanel.updateMap);
-	
+
 		ecobici.RightPanel.isRendered = true;
 	},
 	renderMap: function(data){
@@ -359,14 +370,14 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 			// create the path
 			var path = d3.geo.path().projection(projection);
 
-			// using the path determine the bounds of the current map and use 
+			// using the path determine the bounds of the current map and use
 			// these to determine better values for the scale and translation
 			var bounds = path.bounds(json);
 			var hscale = scale*width  / (bounds[1][0] - bounds[0][0]);
 			var vscale = scale*height / (bounds[1][1] - bounds[0][1]);
 			var scale = (hscale < vscale) ? hscale : vscale;
 			var offset = [
-				width - (bounds[0][0] + bounds[1][0])/2, 
+				width - (bounds[0][0] + bounds[1][0])/2,
 				height - (bounds[0][1] + bounds[1][1])/2
 				];
 
@@ -388,22 +399,22 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 			// 	.enter()
 			// 	.append('circle')
 			// 	.attr({
-			// 		cx : function(d){ 
+			// 		cx : function(d){
 			// 			var lon = d.geometry.coordinates[0];
 			// 			var lat = d.geometry.coordinates[1];
 			// 			var r = projection([lon, lat]);
 			// 			if(r){
-			// 				return r[0] //lon; 
-			// 			} 
+			// 				return r[0] //lon;
+			// 			}
 			// 		},
-			// 		cy : function(d){ 
+			// 		cy : function(d){
 			// 			var lon = d.geometry.coordinates[0];
 			// 			var lat = d.geometry.coordinates[1];
 			// 			var r = projection([lon, lat]);
 			// 			//debugger;
 			// 			if(r){
-			// 				return r[1] //lat; 	
-			// 			} 
+			// 				return r[1] //lat;
+			// 			}
 			// 		},
 			// 		r: function(d){ return Math.sqrt(parseInt(d.properties.CantidadBicicletas)*0.0009); }, // not dynamic, resizes the dot based on 0.000X
 			// 		fill: function(d){ return colorPicker(d.properties.CantidadBicicletas)},
@@ -416,7 +427,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 			// 		d3.select(this).classed("hover", false); //removeClass
 			// 	});
 				// .append('title')
-				// .text(function(d){return d.city});	
+				// .text(function(d){return d.city});
 		});
 
 		function colorPicker(v) {
@@ -430,7 +441,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 				return '#31a354';
 			}
 		}
-		
+
 	},
 	updateMap: function(data){
 		// if(!ecobici.RightPanel.isRendered){
@@ -445,7 +456,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 		// var circles = svg.selectAll('circle.circle-station');
 		// circles.data(data)
 		// 	.enter()
-		// 	.attr("transform", function(d) { 
+		// 	.attr("transform", function(d) {
 		// 		return "translate(" + t.map.latLngToLayerPoint(d.LatLng).x + "," + map.latLngToLayerPoint(d.LatLng).y +")";
 		// 	});
 
@@ -455,7 +466,7 @@ ecobici.RightPanel = $.extend(true, {}, ecobici.Panel, {
 	    // new data:
 	    circles.enter()
 	    	.append('circle')
-	    	.attr("transform", function(d) { 
+	    	.attr("transform", function(d) {
 				return "translate(" + t.map.latLngToLayerPoint(d.LatLng).x + "," + map.latLngToLayerPoint(d.LatLng).y +")";
 			});
 	},
